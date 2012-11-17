@@ -60,8 +60,10 @@ static void musb_do_idle(unsigned long _musb)
 
 	switch (musb->xceiv->state) {
 	case OTG_STATE_A_WAIT_BCON:
-
+/* Don't reset the DEVCTL_SESSION in forced host mode */
+		if (!musb->xceiv->default_a) {
 		devctl = musb_readb(musb->mregs, MUSB_DEVCTL);
+		}
 		if (devctl & MUSB_DEVCTL_BDEVICE) {
 			musb->xceiv->state = OTG_STATE_B_IDLE;
 			MUSB_DEV_MODE(musb);
@@ -139,6 +141,8 @@ static void omap2430_musb_try_idle(struct musb *musb, unsigned long timeout)
 
 static void omap2430_musb_set_vbus(struct musb *musb, int is_on)
 {
+void twl4030_kick(int on);
+
 	u8		devctl;
 	unsigned long timeout = jiffies + msecs_to_jiffies(1000);
 	int ret = 1;
@@ -188,7 +192,7 @@ static void omap2430_musb_set_vbus(struct musb *musb, int is_on)
 		musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
 		MUSB_DEV_MODE(musb);
 	}
-
+	twl4030_kick(is_on);
 	dev_dbg(musb->controller, "VBUS %s, devctl %02x "
 		/* otg %3x conf %08x prcm %08x */ "\n",
 		otg_state_string(musb->xceiv->state),
@@ -197,11 +201,33 @@ static void omap2430_musb_set_vbus(struct musb *musb, int is_on)
 
 static int omap2430_musb_set_mode(struct musb *musb, u8 musb_mode)
 {
-	u8	devctl = musb_readb(musb->mregs, MUSB_DEVCTL);
+	if (musb->board_mode != MUSB_OTG) {
+		ERR("Changing mode currently only supported in OTG mode\n");
+		return -EINVAL;
+	}
 
-	devctl |= MUSB_DEVCTL_SESSION;
-	musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
+	switch (musb_mode) {
+#ifdef CONFIG_USB_MUSB_HDRC_HCD
+	case MUSB_HOST:		/* Enable vbus */
+		omap_set_vbus(musb, 1);
+		break;
+#endif
 
+#ifdef CONFIG_USB_GADGET_MUSB_HDRC
+	case MUSB_PERIPHERAL:	/* disable vbus */
+		omap_set_vbus(musb, 0);
+		break;
+#endif
+
+#ifdef CONFIG_USB_MUSB_OTG
+	case MUSB_OTG:		/* Use PHY ID detection */
+		break;
+#endif
+
+	default:
+		DBG(2, "Trying to set mode %i\n", musb_mode);
+		return -EINVAL;
+	}
 	return 0;
 }
 
