@@ -299,7 +299,8 @@ static enum usb_xceiv_events twl4030_usb_linkstat(struct twl4030_usb *twl)
 				linkstat = USB_EVENT_VBUS;
 			else
 			linkstat = twl4030_charger_detection(twl);
-		else
+		}
+		else 
 			linkstat = USB_EVENT_VBUS;
 	} else
 		linkstat = USB_EVENT_NONE;
@@ -593,8 +594,6 @@ static ssize_t twl4030_usb_vbussrc_set(struct device *dev,
 		if (twl->forcepower == TWL_PWR_EXT)
 			return count;
                 twl->forcepower = TWL_PWR_EXT;
-		twl4030_usb_clear_bits(twl,TWL4030_OTG_CTRL,
-				       TWL4030_OTG_CTRL_DRVVBUS);
 		if (twl_forcelink) {
 			max8903_enable_charge(1);
 			twl->powersource = TWL_PWR_EXT;
@@ -612,8 +611,6 @@ static ssize_t twl4030_usb_vbussrc_set(struct device *dev,
                 twl->forcepower = TWL_PWR_INT;
 		if (twl_forcelink) {
 			max8903_enable_charge(0);
-			twl4030_usb_set_bits(twl,TWL4030_OTG_CTRL,
-					     TWL4030_OTG_CTRL_DRVVBUS);
 			twl->powersource = TWL_PWR_INT;
 		}
         } else {
@@ -677,12 +674,6 @@ void twl4030_kick_work(struct work_struct *work)
 	struct twl4030_usb *twl = twl_superhack;
 	struct otg_transceiver x = twl->otg;
 
-	if (!twl_forcelink) {
-		twl4030_usb_clear_bits(twl,TWL4030_OTG_CTRL, TWL4030_OTG_CTRL_DRVVBUS);
-		twl4030_usb_irq(0, twl);
-		return;
-	}
-
 #ifdef CONFIG_MACH_OMAP3621_EVT1A
 	/* See if there is power already, then no need to turn on our own */
 	if (twl->forcepower == TWL_PWR_EXT || max8903_check_power()) {
@@ -692,15 +683,10 @@ void twl4030_kick_work(struct work_struct *work)
 #endif
 	{
 		twl->powersource = TWL_PWR_INT;
-		twl4030_usb_set_bits(twl,TWL4030_OTG_CTRL,
-				     TWL4030_OTG_CTRL_DRVVBUS);
 	}
 
 	/* Some sleep just in case to let the vbus to stabilize */
 	msleep(100);
-
-	if (x.link_force_active)
-		x.link_force_active(1);
 
 	twl4030_phy_resume(twl);
 
