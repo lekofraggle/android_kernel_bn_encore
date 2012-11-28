@@ -208,6 +208,18 @@ static int omap2430_musb_set_mode(struct musb *musb, u8 musb_mode)
 
 	switch (musb_mode) {
 
+#ifdef CONFIG_USB_MUSB_HDRC_HCD
+  case MUSB_HOST:    /* Enable vbus */
+    omap2430_musb_set_vbus(musb, 1);
+    break;
+#endif
+
+#ifdef CONFIG_USB_GADGET_MUSB_HDRC
+  case MUSB_PERIPHERAL:  /* disable vbus */
+    omap2430_musb_set_vbus(musb, 0);
+    break;
+#endif
+
 #ifdef CONFIG_USB_MUSB_OTG
 	case MUSB_OTG:		/* Use PHY ID detection */
 		break;
