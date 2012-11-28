@@ -592,6 +592,8 @@ static ssize_t twl4030_usb_vbussrc_set(struct device *dev,
 
         if (!strncmp(buf, "external", 8)) {
 		if (twl->forcepower == TWL_PWR_EXT)
+	twl4030_usb_clear_bits(twl,ULPI_OTG_CTRL,
+		ULPI_OTG_DRVVBUS);
 			return count;
                 twl->forcepower = TWL_PWR_EXT;
 		if (twl_forcelink) {
@@ -609,6 +611,8 @@ static ssize_t twl4030_usb_vbussrc_set(struct device *dev,
 			return -EINVAL;
 		}
                 twl->forcepower = TWL_PWR_INT;
+		twl4030_usb_set_bits(twl,ULPI_OTG_CTRL,
+               ULPI_OTG_DRVVBUS);
 		if (twl_forcelink) {
 			max8903_enable_charge(0);
 			twl->powersource = TWL_PWR_INT;
@@ -674,6 +678,12 @@ void twl4030_kick_work(struct work_struct *work)
 	struct twl4030_usb *twl = twl_superhack;
 	struct otg_transceiver x = twl->otg;
 
+	if (!twl_forcelink) {
+	   twl4030_usb_clear_bits(twl,ULPI_OTG_CTRL, ULPI_OTG_DRVVBUS);
+	   twl4030_usb_irq(0, twl);
+	   return;
+	}
+
 #ifdef CONFIG_MACH_OMAP3621_EVT1A
 	/* See if there is power already, then no need to turn on our own */
 	if (twl->forcepower == TWL_PWR_EXT || max8903_check_power()) {
@@ -683,6 +693,8 @@ void twl4030_kick_work(struct work_struct *work)
 #endif
 	{
 		twl->powersource = TWL_PWR_INT;
+		twl4030_usb_set_bits(twl,ULPI_OTG_CTRL,
+		ULPI_OTG_DRVVBUS);
 	}
 
 	/* Some sleep just in case to let the vbus to stabilize */
