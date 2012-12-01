@@ -139,9 +139,9 @@ static void omap2430_musb_try_idle(struct musb *musb, unsigned long timeout)
 	mod_timer(&musb_idle_timer, timeout);
 }
 
+void twl4030_kick(int on);
 static void omap2430_musb_set_vbus(struct musb *musb, int is_on)
 {
-void twl4030_kick(int on);
 
 	u8		devctl;
 	unsigned long timeout = jiffies + msecs_to_jiffies(1000);

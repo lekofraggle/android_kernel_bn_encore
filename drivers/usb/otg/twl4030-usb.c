@@ -302,8 +302,12 @@ static enum usb_xceiv_events twl4030_usb_linkstat(struct twl4030_usb *twl)
 		}
 		else 
 			linkstat = USB_EVENT_VBUS;
-	} else
-		linkstat = USB_EVENT_NONE;
+	} else {
+		if (twl_forcelink)
+			linkstat = USB_EVENT_VBUS;
+		else
+			linkstat = USB_EVENT_NONE;
+	}
 
 	dev_dbg(twl->dev, "HW_CONDITIONS 0x%02x/%d; link %d\n",
 			status, status, linkstat);
